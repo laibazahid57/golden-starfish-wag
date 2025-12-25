@@ -151,23 +151,36 @@ async def google_auth(request: GoogleAuthRequest):
     if not db.client:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database not connected")
 
-    # Mock Verification Logic
+    # Real Google Verification Logic
     token = request.token
-    if token.startswith("mock-google-token"):
-        # Extract mock ID if present or use default
-        # Simple mock: "mock-google-token" -> "mock-123"
-        # "mock-google-token-456" -> "mock-456"
-        parts = token.split("-")
-        if len(parts) > 3:
-             google_id = "mock-" + parts[-1]
-        else:
-             google_id = "mock-123"
+    
+    try:
+        import requests
         
-        email = "user@example.com"
-        display_name = "Google User"
-    else:
-        # For MVP, reject unknown tokens to ensure we are testing correctly
-        raise HTTPException(status_code=400, detail="Invalid Google token (Mock only)")
+        # Verify the access token by calling Google's userinfo endpoint
+        response = requests.get(
+            "https://www.googleapis.com/oauth2/v3/userinfo",
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        
+        if response.status_code != 200:
+            raise ValueError("Invalid access token")
+            
+        user_info = response.json()
+        
+        # Verify that the token was issued to our client (optional but recommended if using id_token,
+        # but for access token, if we can get user info, it's valid for that user.
+        # Stricter checks might involve tokeninfo endpoint)
+        
+        google_id = user_info.get('sub')
+        email = user_info.get('email')
+        display_name = user_info.get('name', 'Google User')
+        
+    except ValueError as e:
+        # Invalid token
+        raise HTTPException(status_code=400, detail=f"Invalid Google token: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Google authentication failed: {str(e)}")
 
     # Check if user exists
     user = await db.client[settings.DB_NAME]["users"].find_one({"google_id": google_id})

@@ -2,6 +2,7 @@
 
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthProvider } from "./context/AuthContext";
 import { SearchProvider } from "./context/SearchContext";
 import AuthPage from "./pages/AuthPage";
@@ -13,10 +14,13 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import PublicOnlyRoute from "./components/PublicOnlyRoute";
 
 function App() {
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
   return (
-    <Router>
-      <AuthProvider>
-        <Routes>
+    <GoogleOAuthProvider clientId={googleClientId}>
+      <Router>
+        <AuthProvider>
+          <Routes>
           {/* Public-only route for authentication */}
           <Route path="/auth" element={
             <PublicOnlyRoute>
@@ -38,9 +42,10 @@ function App() {
 
           {/* Catch-all for unmatched routes */}
           <Route path="*" element={<NotFound />} />
-        </Routes>
-      </AuthProvider>
-    </Router>
+          </Routes>
+        </AuthProvider>
+      </Router>
+    </GoogleOAuthProvider>
   );
 }
 
