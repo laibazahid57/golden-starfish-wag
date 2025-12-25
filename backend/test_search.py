@@ -6,6 +6,7 @@ from main import app
 # Base URL for the API
 BASE_URL = "http://127.0.0.1:8000"
 
+@pytest.mark.asyncio
 async def test_search_endpoint():
     print("\n🧪 Testing Search Endpoint...")
     

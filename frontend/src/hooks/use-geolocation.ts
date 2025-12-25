@@ -67,38 +67,82 @@ export function useGeolocation() {
       setIsUsingDefault(false);
     };
 
-    const handleError = (geoError: GeolocationPositionError) => {
-      let errorMessage = "An unknown error occurred while getting your location.";
-      let isPermissionDenied = false;
+    const handleError = async (geoError: GeolocationPositionError) => {
+      let baseErrorMessage = "An unknown error occurred while getting your location.";
 
       switch (geoError.code) {
         case geoError.PERMISSION_DENIED:
-          errorMessage = "Location access denied. Using default location.";
-          isPermissionDenied = true;
+          baseErrorMessage = "Location access denied.";
           break;
         case geoError.POSITION_UNAVAILABLE:
-          errorMessage = "Location information is unavailable. Using default location.";
+          baseErrorMessage = "Location information is unavailable.";
           break;
         case geoError.TIMEOUT:
-          errorMessage = "The request to get user location timed out. Using default location.";
+          baseErrorMessage = "The request to get user location timed out.";
           break;
       }
+
+      console.warn(baseErrorMessage, "Attempting IP fallback...");
+
+      try {
+        const response = await fetch('https://ipapi.co/json/');
+        if (response.ok) {
+          const data = await response.json();
+          setUserLocation({
+            latitude: data.latitude,
+            longitude: data.longitude,
+            city: data.city,
+            country: data.country_name,
+          });
+          setLoading(false);
+          setIsUsingDefault(false);
+          return;
+        }
+      } catch (ipError) {
+        console.error("IP fallback failed:", ipError);
+      }
       
-      setError(errorMessage);
+      const finalErrorMessage = `${baseErrorMessage} Using default location.`;
+      setError(finalErrorMessage);
       // Only show toast error if it's not just a simple permission denial (which the user explicitly chose)
       // or if we want to be persistent. For now, we show it to be clear.
-      showError(errorMessage);
+      showError(finalErrorMessage);
       
       setUserLocation(DEFAULT_LOCATION); // Fallback to default location
       setIsUsingDefault(true);
       setLoading(false);
     };
 
-    navigator.geolocation.getCurrentPosition(handleSuccess, handleError, {
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 0,
-    });
+    // Try high accuracy first
+    navigator.geolocation.getCurrentPosition(
+      handleSuccess,
+      (error) => {
+        // If permission is denied, don't bother trying again with low accuracy
+        // as it will just be denied again.
+        if (error.code === error.PERMISSION_DENIED) {
+          handleError(error);
+          return;
+        }
+
+        console.warn(`High accuracy geolocation failed (${error.message}), trying low accuracy...`);
+        
+        // Fallback to low accuracy
+        navigator.geolocation.getCurrentPosition(
+          handleSuccess,
+          handleError,
+          {
+            enableHighAccuracy: false,
+            timeout: 20000, // Longer timeout for low accuracy fallback
+            maximumAge: 30000, // Accept cached positions up to 30 seconds old
+          }
+        );
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000, // Short timeout for high accuracy attempt
+        maximumAge: 0,
+      }
+    );
   }, []);
 
   useEffect(() => {

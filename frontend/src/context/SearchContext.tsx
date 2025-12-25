@@ -61,7 +61,8 @@ export const SearchProvider = ({ children }: { children: ReactNode }) => {
           params.append("max_calories", calorieRange.toString());
         }
 
-        const response = await fetch(`http://localhost:8000/restaurants/search?${params.toString()}`);
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        const response = await fetch(`${apiUrl}/restaurants/search?${params.toString()}`);
         
         if (!response.ok) {
           throw new Error(`API Error: ${response.statusText}`);

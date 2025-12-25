@@ -98,6 +98,11 @@ async def guest_auth():
         user=user_in_db
     )
 
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
+
 @app.get("/restaurants/search")
 async def search_restaurants(lat: float, lng: float, mileage: int = 5, max_calories: int = None):
     if not db.client:

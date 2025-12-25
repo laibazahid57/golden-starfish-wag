@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User } from "@/types";
 import { showSuccess, showError } from "@/utils/toast";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 interface AuthContextType {
   user: User | null;
   login: (token: string) => Promise<void>;
@@ -23,7 +25,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (token: string) => {
     try {
-      const response = await fetch("http://localhost:8000/auth/google", {
+      const response = await fetch(`${API_URL}/auth/google`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -55,7 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const continueAsGuest = async () => {
     try {
-      const response = await fetch("http://localhost:8000/auth/guest", {
+      const response = await fetch(`${API_URL}/auth/guest`, {
         method: "POST",
       });
 
