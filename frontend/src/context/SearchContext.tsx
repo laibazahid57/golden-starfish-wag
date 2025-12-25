@@ -1,16 +1,19 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { Restaurant } from "@/types";
 import { useGeolocation } from "@/hooks/use-geolocation";
+import { mockRestaurants } from "@/data/mockData";
 
 interface SearchContextType {
   calorieRange: number | null;
   setCalorieRange: (range: number | null) => void;
   mileageRange: number | null;
   setMileageRange: (range: number | null) => void;
-  userLocation: { latitude: number; longitude: number } | null;
+  userLocation: { latitude: number; longitude: number; city?: string; country?: string } | null;
   filteredRestaurants: Restaurant[];
   loadingLocation: boolean;
   locationError: string | null;
+  isUsingDefaultLocation: boolean;
+  refreshLocation: () => void;
 }
 
 const SearchContext = createContext<SearchContextType | undefined>(undefined);
@@ -21,7 +24,13 @@ export const SearchProvider = ({ children }: { children: ReactNode }) => {
   const [filteredRestaurants, setFilteredRestaurants] = useState<Restaurant[]>([]);
   const [apiError, setApiError] = useState<string | null>(null);
   
-  const { userLocation, loading: loadingLocation, error: locationError } = useGeolocation();
+  const {
+    userLocation,
+    loading: loadingLocation,
+    error: locationError,
+    isUsingDefault: isUsingDefaultLocation,
+    refreshLocation
+  } = useGeolocation();
 
   useEffect(() => {
     const fetchRestaurants = async () => {
@@ -59,11 +68,39 @@ export const SearchProvider = ({ children }: { children: ReactNode }) => {
         }
 
         const data = await response.json();
-        setFilteredRestaurants(data);
+        
+        if (data.length > 0) {
+          setFilteredRestaurants(data);
+        } else {
+          // Fallback to mock data if no results found
+          console.log("No restaurants found. Falling back to mock data.");
+          let fallbackData = mockRestaurants;
+
+          if (calorieRange !== null) {
+            fallbackData = fallbackData.map(restaurant => ({
+              ...restaurant,
+              menu_items: restaurant.menu_items.filter(item => item.calories <= calorieRange)
+            })).filter(restaurant => restaurant.menu_items.length > 0);
+          }
+          
+          setFilteredRestaurants(fallbackData);
+        }
       } catch (err) {
         console.error("Failed to fetch restaurants:", err);
         setApiError(err instanceof Error ? err.message : "Failed to fetch restaurants");
-        setFilteredRestaurants([]);
+        
+        // Fallback to mock data on error
+        console.log("API Error. Falling back to mock data.");
+        let fallbackData = mockRestaurants;
+
+        if (calorieRange !== null) {
+          fallbackData = fallbackData.map(restaurant => ({
+            ...restaurant,
+            menu_items: restaurant.menu_items.filter(item => item.calories <= calorieRange)
+          })).filter(restaurant => restaurant.menu_items.length > 0);
+        }
+        
+        setFilteredRestaurants(fallbackData);
       }
     };
 
@@ -81,6 +118,8 @@ export const SearchProvider = ({ children }: { children: ReactNode }) => {
         filteredRestaurants,
         loadingLocation,
         locationError: locationError || apiError, // Combine location error with API error
+        isUsingDefaultLocation,
+        refreshLocation,
       }}
     >
       {children}

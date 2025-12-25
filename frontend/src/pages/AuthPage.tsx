@@ -13,10 +13,10 @@ const AuthPage = () => {
   const navigate = useNavigate();
   const { login, continueAsGuest } = useAuth(); // Use AuthContext functions
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = async (token: string) => {
     console.log("Google Sign-In button clicked!");
     setLoading(true);
-    await login("mock-google-token-123"); // Call AuthContext's login function
+    await login(token); // Call AuthContext's login function
     console.log("Google Sign-In successful, navigating to /");
     navigate("/");
     setLoading(false);
@@ -42,7 +42,7 @@ const AuthPage = () => {
         </CardHeader>
         <CardContent className="p-6 pt-0">
           <div className="space-y-4">
-            <GoogleSignInButton onClick={handleGoogleSignIn} disabled={loading} />
+            <GoogleSignInButton onSuccess={handleGoogleSignIn} disabled={loading} />
             <GuestSignInButton onClick={handleGuestLogin} disabled={loading} />
           </div>
         </CardContent>
